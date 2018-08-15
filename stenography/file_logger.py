@@ -15,7 +15,7 @@ class FileLogger(logger.Logger):
         self.filename_format = filename_format or '{date}_{name}.log'
         self.logs_dir = logs_dir
 
-    def writeln(self, date, name, level, timestamp, msg, *args, **kwargs):
+    def writeln(self, date, name, level, timestamp, msg, **kwargs):
         log_file = self.filename_format.format(date=date, name=name, level=level,
                                                timestamp=timestamp)
         log_file = os.path.join(self.logs_dir, log_file)

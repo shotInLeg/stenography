@@ -11,9 +11,9 @@ class CombinedLogger(logger.Logger):
         )
         self.loggers = loggers or []
 
-    def logging(self, level, msg, *args, **kwargs):
+    def logging(self, level, msg, **kwargs):
         for logger_ in self.loggers:
-            logger_.logging(level, msg, *args, **kwargs)
+            logger_.logging(level, msg, **kwargs)
 
-    def writeln(self, date, name, level, timestamp, msg, *args, **kwargs):
+    def writeln(self, date, name, level, timestamp, msg, **kwargs):
         pass

@@ -1,24 +1,19 @@
-# !/usr/bin/env python
 # coding: utf8
-"""Initialize module utils."""
-__all__ = [
-    'CombinedLogger',
-    'ConsoleLogger',
-    'FileLogger',
-    'LoggerSingleton'
-]
-
-
 from .combined_logger import CombinedLogger
 from .console_logger import ConsoleLogger
 from .file_logger import FileLogger
 from .singleton import LoggerSingleton
+from .decorators import worktime, raiselog, calllog, warnslow, warnvalue, combined
 
 __version__ = '0.0.1'
 
 
 def get(name=None, logger=None, **kwargs):
     return LoggerSingleton.get_logger(name, logger, **kwargs)
+
+
+def get_logger(name=None, logger=None, **kwargs):
+    return get(name=name, logger=logger, **kwargs)
 
 
 def on_import():
