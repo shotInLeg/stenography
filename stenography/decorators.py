@@ -1,13 +1,12 @@
 # coding: utf8
 import time
+import logging
 import inspect
 import functools
 import traceback
 
-import singleton
 
-
-def worktime(logger_name):
+def worktime_log(logger_name, level=logging.DEBUG):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -15,28 +14,52 @@ def worktime(logger_name):
             try:
                 ret_value = func(*args, **kwargs)
             finally:
-                singleton.LoggerSingleton.get_logger(logger_name).info(
-                    'TIME {} {}'.format(func.__name__, time.time() - start)
+                logging.getLogger(logger_name).info(
+                    'WORKTIME f@{} by {}s'.format(func.__name__, time.time() - start)
                 )
             return ret_value
         return wrapper
     return decorator
 
 
-def raiselog(logger_name, trace=False):
+def function_call_log(logger_name, level=logging.DEBUG, finish=False):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            logger = logging.getLogger(logger_name)
+            caller = inspect.stack()[1][3]
+            code_row = inspect.stack()[1][2]
+            start = time.time()
+            try:
+                logger.info(
+                    'FUNCTION_CALL CALL f@{}[LINE:{}] -> f@{}'.format(caller, code_row, func.__name__)
+                )
+                ret_value = func(*args, **kwargs)
+            finally:
+                if finish:
+                    logger.info(
+                        'FUNCTION_CALL RETURN f@{}[LINE:{}] <- f@{} by {}s'.format(caller, code_row, func.__name__, time.time() - start)
+                    )
+            return ret_value
+        return wrapper
+    return decorator
+
+
+def raise_log(logger_name, level=logging.DEBUG, trace=False):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            logger = logging.getLogger(logger_name)
             try:
                 ret_value = func(*args, **kwargs)
             except Exception as e:
                 if not trace:
-                    singleton.LoggerSingleton.get_logger(logger_name).error(
-                        '{}({}) {}'.format(type(e), func.__name__, e)
+                    logger.error(
+                        'RAISE EXCEPTION {}(f@{}) {}'.format(type(e), func.__name__, e)
                     )
                 else:
-                    singleton.LoggerSingleton.get_logger(logger_name).error(
-                        'TRACEBACK {}\n{}\n{}'.format(
+                    logger.error(
+                        'RAISE TRACEBACK f@{}\n{}\n{}'.format(
                             func.__name__, traceback.format_exc(limit=20),
                             '-' * 80
                         )
@@ -47,75 +70,37 @@ def raiselog(logger_name, trace=False):
     return decorator
 
 
-def calllog(logger_name, finish=False, work_time=False):
+def warnslow_log(logger_name, level=logging.DEBUG, speed=1):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            caller = inspect.stack()[1][3]
-            row = inspect.stack()[1][2]
-            start = time.time()
-            try:
-                singleton.LoggerSingleton.get_logger(logger_name).debug(
-                    'CALL {}[{}] -> {}'.format(caller, row, func.__name__)
-                )
-                ret_value = func(*args, **kwargs)
-            finally:
-                if finish:
-                    singleton.LoggerSingleton.get_logger(logger_name).debug(
-                        'RETURN {}[{}] <- {}{}'.format(
-                            caller, row, func.__name__,
-                            ' {}'.format(time.time() - start) if work_time else ''
-                        )
-                    )
-                elif work_time:
-                    singleton.LoggerSingleton.get_logger(logger_name).debug(
-                        'TIME {} {}'.format(func.__name__, time.time() - start)
-                    )
-            return ret_value
-        return wrapper
-    return decorator
-
-
-def warnslow(logger_name, speed=1):
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+            logger = logging.getLogger(logger_name)
             start = time.time()
             try:
                 ret_value = func(*args, **kwargs)
             finally:
                 delta = time.time() - start
                 if delta > speed:
-                    singleton.LoggerSingleton.get_logger(logger_name).warn(
-                        'SLOW {} {}'.format(func.__name__, delta)
-                    )
+                    logger.warn('WARNSLOW f@{} by {}s'.format(func.__name__, delta))
             return ret_value
         return wrapper
     return decorator
 
 
-def warnvalue(logger_name, value=1, comp=lambda x, y: x == y):
+def warnvalue(logger_name, level=logging.DEBUG, print_ret_value=False, comp=lambda x: x is None):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            logger = logging.getLogger(logger_name)
             ret_value = None
             try:
                 ret_value = func(*args, **kwargs)
             finally:
-                if comp(ret_value, value):
-                    singleton.LoggerSingleton.get_logger(logger_name).warn(
-                        'BAD RETURN {}'.format(func.__name__)
-                    )
+                if comp(ret_value):
+                    logger.warn('WARNVALUE f@{}{}'.format(
+                        func.__name__, ' {}'.format(ret_value) if print_ret_value else ''
+                    ))
             return ret_value
         return wrapper
     return decorator
 
-
-def combined(*decorators):
-    def decorator(func):
-        new_func = func
-        for decor in reversed(decorators):
-            new_func = decor(new_func)
-            new_func.__name__ = func.__name__
-        return new_func
-    return decorator
